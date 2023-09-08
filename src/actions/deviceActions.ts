@@ -9,11 +9,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- TODO: Remove, only added for conservative refactoring to typescript */
 
 import {
-    isDevelopment,
+    // isDevelopment,
     logger,
     usageData,
 } from '@nordicsemiconductor/pc-nrfconnect-shared';
 
+// import Database from 'better-sqlite3';
 import SerialDevice from '../device/serialDevice';
 import { SampleValues } from '../device/types';
 import { minimapEvents } from '../features/minimap/minimapEvents';
@@ -57,7 +58,7 @@ import {
 } from '../slices/triggerSlice';
 import { updateRegulator as updateRegulatorAction } from '../slices/voltageRegulatorSlice';
 import EventAction from '../usageDataActions';
-import { convertBits16 } from '../utils/bitConversion';
+// import { convertBits16 } from '../utils/bitConversion';
 import { isRealTimePane } from '../utils/panes';
 import { setSpikeFilter as persistSpikeFilter } from '../utils/persistentStore';
 import { calculateWindowSize, processTriggerSample } from './triggerActions';
@@ -65,9 +66,9 @@ import { calculateWindowSize, processTriggerSample } from './triggerActions';
 let device: null | SerialDevice = null;
 let updateRequestInterval: NodeJS.Timeout | undefined;
 
-const zeroCap = isDevelopment
-    ? (n: number) => n
-    : (n: number) => Math.max(0, n);
+// const zeroCap = isDevelopment
+//     ? (n: number) => n
+//     : (n: number) => Math.max(0, n);
 
 export const setupOptions =
     () => (dispatch: TDispatch, getState: () => RootState) => {
@@ -218,10 +219,10 @@ export function open(deviceInfo: any) {
             await dispatch(close());
         }
 
-        let prevValue = 0;
-        let prevBits = 0;
-        let nbSamples = 0;
-        let nbSamplesTotal = 0;
+        // let prevValue = 0;
+        // let prevBits = 0;
+        // let nbSamples = 0;
+        // let nbSamplesTotal = 0;
 
         const initializeChartForRealTime = () => {
             const { triggerLength } = getState().app.trigger;
@@ -233,74 +234,89 @@ export function open(deviceInfo: any) {
             dispatch(chartWindowAction(0, end!, end!));
         };
 
+        // const db = new Database('/tmp/ppk-test.db', { verbose: console.log });
+        // const db = new Database('/tmp/ppk-test.db');
+        // Though not required, it is generally important to set the WAL pragma for performance reasons.
+        // db.pragma('journal_mode = WAL');
+        // db.prepare('DROP TABLE ppk').run();
+        // db.prepare(
+        //     'CREATE TABLE ppk (id INTEGER, value REAL, bits INTEGER, timestamp INTEGER, type TEXT)'
+        // ).run();
+        // const stmt = db.prepare(
+        //     'INSERT INTO ppk (id, value, bits, timestamp, type) VALUES (?, ?, ?, ?, ?)'
+        // );
+
         const onSample = ({ value, bits, endOfTrigger }: SampleValues) => {
-            if (options.timestamp == null) {
-                options.timestamp = 0;
-            }
-
-            const {
-                app: { samplingRunning },
-                dataLogger: { maxSampleFreq, sampleFreq },
-                trigger: {
-                    triggerRunning,
-                    triggerStartIndex,
-                    triggerSingleWaiting,
-                },
-            } = getState().app;
-            if (
-                !triggerRunning &&
-                !samplingRunning &&
-                !triggerStartIndex &&
-                !triggerSingleWaiting
-            ) {
-                return;
-            }
-
-            let zeroCappedValue = zeroCap(value!);
-            const b16 = convertBits16(bits!);
-
-            if (samplingRunning && sampleFreq < maxSampleFreq) {
-                const samplesPerAverage = maxSampleFreq / sampleFreq;
-                nbSamples += 1;
-                nbSamplesTotal += 1;
-                const f = Math.min(nbSamplesTotal, samplesPerAverage);
-                if (Number.isFinite(value) && Number.isFinite(prevValue)) {
-                    zeroCappedValue =
-                        prevValue + (zeroCappedValue - prevValue) / f;
-                }
-                if (nbSamples < samplesPerAverage) {
-                    if (value !== undefined) {
-                        prevValue = zeroCappedValue;
-                        prevBits |= b16;
-                    }
-                    return;
-                }
-                nbSamples = 0;
-            }
-
-            options.data[options.index] = zeroCappedValue;
-            if (options.bits) {
-                options.bits[options.index] = b16 | prevBits;
-                prevBits = 0;
-            }
-            options.index += 1;
-            options.timestamp += options.samplingTime;
-
-            if (options.index === options.data.length) {
-                if (samplingRunning) {
-                    dispatch(samplingStop());
-                }
-            }
-            if (triggerRunning || triggerSingleWaiting) {
-                dispatch(
-                    processTriggerSample(value!, device!, {
-                        samplingTime: options.samplingTime,
-                        dataIndex: options.index,
-                        dataBuffer: options.data,
-                        endOfTrigger: endOfTrigger!,
-                    })
-                );
-            }
+            //     if (options.timestamp == null) {
+            //         options.timestamp = 0;
+            //     }
+            //     const {
+            //         app: { samplingRunning },
+            //         dataLogger: { maxSampleFreq, sampleFreq },
+            //         trigger: {
+            //             triggerRunning,
+            //             triggerStartIndex,
+            //             triggerSingleWaiting,
+            //         },
+            //     } = getState().app;
+            //     if (
+            //         !triggerRunning &&
+            //         !samplingRunning &&
+            //         !triggerStartIndex &&
+            //         !triggerSingleWaiting
+            //     ) {
+            //         return;
+            //     }
+            //     let zeroCappedValue = zeroCap(value!);
+            //     const b16 = convertBits16(bits!);
+            //     if (samplingRunning && sampleFreq < maxSampleFreq) {
+            //         const samplesPerAverage = maxSampleFreq / sampleFreq;
+            //         nbSamples += 1;
+            //         nbSamplesTotal += 1;
+            //         const f = Math.min(nbSamplesTotal, samplesPerAverage);
+            //         if (Number.isFinite(value) && Number.isFinite(prevValue)) {
+            //             zeroCappedValue =
+            //                 prevValue + (zeroCappedValue - prevValue) / f;
+            //         }
+            //         if (nbSamples < samplesPerAverage) {
+            //             if (value !== undefined) {
+            //                 prevValue = zeroCappedValue;
+            //                 prevBits |= b16;
+            //             }
+            //             return;
+            //         }
+            //         nbSamples = 0;
+            //     }
+            // options.data[options.index] = zeroCappedValue;
+            // stmt.run(
+            //     options.index,
+            //     zeroCappedValue,
+            //     b16 | prevBits,
+            //     options.timestamp + options.samplingTime,
+            //     'raw'
+            // );
+            // if (options.bits) {
+            //     options.bits[options.index] = b16 | prevBits;
+            //     prevBits = 0;
+            // }
+            //     options.index += 1;
+            //     options.timestamp += options.samplingTime;
+            //     if (options.index === options.data.length) {
+            //         if (samplingRunning) {
+            //             dispatch(samplingStop());
+            //             db.close();
+            //         }
+            //     }
+            //     if (triggerRunning || triggerSingleWaiting) {
+            //         dispatch(
+            //             processTriggerSample(value!, device!, {
+            //                 samplingTime: options.samplingTime,
+            //                 dataIndex: options.index,
+            //                 dataBuffer: options.data,
+            //                 endOfTrigger: endOfTrigger!,
+            //             })
+            //         );
+            //     }
         };
 
         try {

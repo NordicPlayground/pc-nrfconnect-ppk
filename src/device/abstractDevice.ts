@@ -73,6 +73,8 @@ export default abstract class Device extends EventEmitter {
 
     abstract sendCommand(...args: PPKCmd[]): Promise<unknown> | undefined;
 
+    abstract sendCommandDescription(type: string | number, value: number): any;
+
     abstract stop(): void;
 
     abstract start(): Promise<unknown>;
@@ -95,6 +97,7 @@ export default abstract class Device extends EventEmitter {
 
     ppkUpdateRegulator(vdd: number): Promise<unknown> {
         this.currentVdd = vdd;
+        this.sendCommandDescription(PPKCmd.RegulatorSet, this.currentVdd);
         // eslint-disable-next-line no-bitwise
         return this.sendCommand([PPKCmd.RegulatorSet, vdd >> 8, vdd & 0xff])!;
     }

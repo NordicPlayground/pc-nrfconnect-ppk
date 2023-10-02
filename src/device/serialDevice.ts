@@ -8,6 +8,7 @@
 
 import { getAppDir, logger } from '@nordicsemiconductor/pc-nrfconnect-shared';
 import { fork } from 'child_process';
+// import { isMainThread, parentPort, Worker } from 'node:worker_threads';
 import path from 'path';
 
 import PPKCmd from '../constants';
@@ -23,20 +24,20 @@ import {
 
 /* eslint-disable no-bitwise */
 
-// const generateMask = (bits: number, pos: number): Mask => ({
-//     pos,
-//     mask: (2 ** bits - 1) << pos,
-// });
-// const MEAS_ADC = generateMask(14, 0);
-// const MEAS_RANGE = generateMask(3, 14);
-// const MEAS_COUNTER = generateMask(6, 18);
-// const MEAS_LOGIC = generateMask(8, 24);
+const generateMask = (bits: number, pos: number): Mask => ({
+    pos,
+    mask: (2 ** bits - 1) << pos,
+});
+const MEAS_ADC = generateMask(14, 0);
+const MEAS_RANGE = generateMask(3, 14);
+const MEAS_COUNTER = generateMask(6, 18);
+const MEAS_LOGIC = generateMask(8, 24);
 
-// const MAX_PAYLOAD_COUNTER = 0b111111; // 0x3f, 64 - 1
+const MAX_PAYLOAD_COUNTER = 0b111111; // 0x3f, 64 - 1
 const DATALOSS_THRESHOLD = 500; // 500 * 10us = 5ms: allowed loss
 
-// const getMaskedValue = (value: number, { mask, pos }: Mask): number =>
-//     (value & mask) >> pos;
+const getMaskedValue = (value: number, { mask, pos }: Mask): number =>
+    (value & mask) >> pos;
 
 // TODO: How to implement onSampleCallback and open, they are defined in the deviceActions file
 class SerialDevice extends Device {
@@ -57,7 +58,7 @@ class SerialDevice extends Device {
     public triggerWindowRange = { min: 1, max: 100 };
     public isRunningInitially = false;
 
-    // private adcMult = 1.8 / 163840;
+    private adcMult = 1.8 / 163840;
 
     // This are all declared to make typescript aware of their existence.
     private spikeFilter;
@@ -89,7 +90,7 @@ class SerialDevice extends Device {
             samples: 3,
         };
         this.path = deviceInfo.serialport.comName;
-        this.child = fork(path.resolve(getAppDir(), 'dist', 'serialDevice.js'));
+        this.child = fork(path.resolve(getAppDir(), 'dist', 'main.js'));
         this.parser = null;
         this.resetDataLossCounter();
 
@@ -123,61 +124,61 @@ class SerialDevice extends Device {
         this.corruptedSamples = [];
     }
 
-    // getAdcResult(range: number, adcVal: number): number {
-    //     const resultWithoutGain =
-    //         (adcVal - this.modifiers.o[range]) *
-    //         (this.adcMult / this.modifiers.r[range]);
-    //     let adc =
-    //         this.modifiers.ug[range] *
-    //         (resultWithoutGain *
-    //             (this.modifiers.gs[range] * resultWithoutGain +
-    //                 this.modifiers.gi[range]) +
-    //             (this.modifiers.s[range] * (this.currentVdd / 1000) +
-    //                 this.modifiers.i[range]));
+    getAdcResult(range: number, adcVal: number): number {
+        const resultWithoutGain =
+            (adcVal - this.modifiers.o[range]) *
+            (this.adcMult / this.modifiers.r[range]);
+        let adc =
+            this.modifiers.ug[range] *
+            (resultWithoutGain *
+                (this.modifiers.gs[range] * resultWithoutGain +
+                    this.modifiers.gi[range]) +
+                (this.modifiers.s[range] * (this.currentVdd / 1000) +
+                    this.modifiers.i[range]));
 
-    //     const prevRollingAvg4 = this.rollingAvg4;
-    //     const prevRollingAvg = this.rollingAvg;
+        const prevRollingAvg4 = this.rollingAvg4;
+        const prevRollingAvg = this.rollingAvg;
 
-    //     this.rollingAvg =
-    //         this.rollingAvg === undefined
-    //             ? adc
-    //             : this.spikeFilter.alpha * adc +
-    //               (1.0 - this.spikeFilter.alpha) * this.rollingAvg;
-    //     this.rollingAvg4 =
-    //         this.rollingAvg4 === undefined
-    //             ? adc
-    //             : this.spikeFilter.alpha5 * adc +
-    //               (1.0 - this.spikeFilter.alpha5) * this.rollingAvg4;
+        this.rollingAvg =
+            this.rollingAvg === undefined
+                ? adc
+                : this.spikeFilter.alpha * adc +
+                  (1.0 - this.spikeFilter.alpha) * this.rollingAvg;
+        this.rollingAvg4 =
+            this.rollingAvg4 === undefined
+                ? adc
+                : this.spikeFilter.alpha5 * adc +
+                  (1.0 - this.spikeFilter.alpha5) * this.rollingAvg4;
 
-    //     if (this.prevRange === undefined) {
-    //         this.prevRange = range;
-    //     }
+        if (this.prevRange === undefined) {
+            this.prevRange = range;
+        }
 
-    //     if (this.prevRange !== range || this.afterSpike! > 0) {
-    //         if (this.prevRange !== range) {
-    //             // number of measurements after the spike which still to be averaged
-    //             this.consecutiveRangeSample = 0;
-    //             this.afterSpike = this.spikeFilter.samples;
-    //         } else {
-    //             this.consecutiveRangeSample! += 1;
-    //         }
-    //         // Use previous rolling average if within first two samples of range 4
-    //         if (range === 4) {
-    //             if (this.consecutiveRangeSample! < 2) {
-    //                 this.rollingAvg4 = prevRollingAvg4;
-    //                 this.rollingAvg = prevRollingAvg;
-    //             }
-    //             adc = this.rollingAvg4!;
-    //         } else {
-    //             adc = this.rollingAvg;
-    //         }
-    //         // adc = range === 4 ? this.rollingAvg4 : this.rollingAvg;
-    //         this.afterSpike! -= 1;
-    //     }
-    //     this.prevRange = range;
+        if (this.prevRange !== range || this.afterSpike! > 0) {
+            if (this.prevRange !== range) {
+                // number of measurements after the spike which still to be averaged
+                this.consecutiveRangeSample = 0;
+                this.afterSpike = this.spikeFilter.samples;
+            } else {
+                this.consecutiveRangeSample! += 1;
+            }
+            // Use previous rolling average if within first two samples of range 4
+            if (range === 4) {
+                if (this.consecutiveRangeSample! < 2) {
+                    this.rollingAvg4 = prevRollingAvg4;
+                    this.rollingAvg = prevRollingAvg;
+                }
+                adc = this.rollingAvg4!;
+            } else {
+                adc = this.rollingAvg;
+            }
+            // adc = range === 4 ? this.rollingAvg4 : this.rollingAvg;
+            this.afterSpike! -= 1;
+        }
+        this.prevRange = range;
 
-    //     return adc;
-    // }
+        return adc;
+    }
 
     start() {
         this.child.send({ open: this.path });
@@ -237,75 +238,75 @@ class SerialDevice extends Device {
         this.dataLossCounter += missingSamples;
     }
 
-    // handleRawDataSet(adcValue: number) {
-    //     try {
-    //         const currentMeasurementRange = Math.min(
-    //             getMaskedValue(adcValue, MEAS_RANGE),
-    //             this.modifiers.r.length
-    //         );
-    //         const counter = getMaskedValue(adcValue, MEAS_COUNTER);
-    //         const adcResult = getMaskedValue(adcValue, MEAS_ADC) * 4;
-    //         const bits = getMaskedValue(adcValue, MEAS_LOGIC);
-    //         const value =
-    //             this.getAdcResult(currentMeasurementRange, adcResult) * 1e6;
+    handleRawDataSet(adcValue: number) {
+        try {
+            const currentMeasurementRange = Math.min(
+                getMaskedValue(adcValue, MEAS_RANGE),
+                this.modifiers.r.length
+            );
+            const counter = getMaskedValue(adcValue, MEAS_COUNTER);
+            const adcResult = getMaskedValue(adcValue, MEAS_ADC) * 4;
+            const bits = getMaskedValue(adcValue, MEAS_LOGIC);
+            const value =
+                this.getAdcResult(currentMeasurementRange, adcResult) * 1e6;
 
-    //         if (this.expectedCounter === null) {
-    //             this.expectedCounter = counter;
-    //         } else if (
-    //             this.corruptedSamples.length > 0 &&
-    //             counter === this.expectedCounter
-    //         ) {
-    //             while (this.corruptedSamples.length > 0) {
-    //                 this.onSampleCallback(this.corruptedSamples.shift()!);
-    //             }
-    //             this.corruptedSamples = [];
-    //         } else if (this.corruptedSamples.length > 4) {
-    //             const missingSamples =
-    //                 (counter - this.expectedCounter + MAX_PAYLOAD_COUNTER) &
-    //                 MAX_PAYLOAD_COUNTER;
-    //             this.dataLossReport(missingSamples);
-    //             for (let i = 0; i < missingSamples; i += 1) {
-    //                 this.onSampleCallback({});
-    //             }
-    //             this.expectedCounter = counter;
-    //             this.corruptedSamples = [];
-    //         } else if (this.expectedCounter !== counter) {
-    //             this.corruptedSamples.push({ value, bits });
-    //         }
+            if (this.expectedCounter === null) {
+                this.expectedCounter = counter;
+            } else if (
+                this.corruptedSamples.length > 0 &&
+                counter === this.expectedCounter
+            ) {
+                while (this.corruptedSamples.length > 0) {
+                    this.onSampleCallback(this.corruptedSamples.shift()!);
+                }
+                this.corruptedSamples = [];
+            } else if (this.corruptedSamples.length > 4) {
+                const missingSamples =
+                    (counter - this.expectedCounter + MAX_PAYLOAD_COUNTER) &
+                    MAX_PAYLOAD_COUNTER;
+                this.dataLossReport(missingSamples);
+                for (let i = 0; i < missingSamples; i += 1) {
+                    this.onSampleCallback({});
+                }
+                this.expectedCounter = counter;
+                this.corruptedSamples = [];
+            } else if (this.expectedCounter !== counter) {
+                this.corruptedSamples.push({ value, bits });
+            }
 
-    //         this.expectedCounter += 1;
-    //         this.expectedCounter &= MAX_PAYLOAD_COUNTER;
-    //         // Only fire the event, if the buffer data is valid
-    //         this.onSampleCallback({ value, bits });
-    //     } catch (err: unknown) {
-    //         // TODO: This does not consistently handle all possibilites
-    //         // Even though we expect all err to be instance of Error we should
-    //         // probably also include an else and potentially log it to ensure all
-    //         // branches are considered.
-    //         if (err instanceof Error) {
-    //             console.log(err.message, 'original value', adcValue);
-    //         }
-    //         // to keep timestamp consistent, undefined must be emitted
-    //         this.onSampleCallback({});
-    //     }
-    // }
+            this.expectedCounter += 1;
+            this.expectedCounter &= MAX_PAYLOAD_COUNTER;
+            // Only fire the event, if the buffer data is valid
+            this.onSampleCallback({ value, bits });
+        } catch (err: unknown) {
+            // TODO: This does not consistently handle all possibilites
+            // Even though we expect all err to be instance of Error we should
+            // probably also include an else and potentially log it to ensure all
+            // branches are considered.
+            if (err instanceof Error) {
+                console.log(err.message, 'original value', adcValue);
+            }
+            // to keep timestamp consistent, undefined must be emitted
+            this.onSampleCallback({});
+        }
+    }
 
-    // remainder = Buffer.alloc(0);
+    remainder = Buffer.alloc(0);
 
-    // parseMeasurementData(buf: Buffer) {
-    //     const sampleSize = 4;
-    //     let ofs = this.remainder.length;
-    //     const first = Buffer.concat(
-    //         [this.remainder, buf.subarray(0, sampleSize - ofs)],
-    //         sampleSize
-    //     );
-    //     ofs = sampleSize - ofs;
-    //     this.handleRawDataSet(first.readUIntLE(0, sampleSize));
-    //     for (; ofs <= buf.length - sampleSize; ofs += sampleSize) {
-    //         this.handleRawDataSet(buf.readUIntLE(ofs, sampleSize));
-    //     }
-    //     this.remainder = buf.subarray(ofs);
-    // }
+    parseMeasurementData(buf: Buffer) {
+        const sampleSize = 4;
+        let ofs = this.remainder.length;
+        const first = Buffer.concat(
+            [this.remainder, buf.subarray(0, sampleSize - ofs)],
+            sampleSize
+        );
+        ofs = sampleSize - ofs;
+        this.handleRawDataSet(first.readUIntLE(0, sampleSize));
+        for (; ofs <= buf.length - sampleSize; ofs += sampleSize) {
+            this.handleRawDataSet(buf.readUIntLE(ofs, sampleSize));
+        }
+        this.remainder = buf.subarray(ofs);
+    }
 
     getMetadata() {
         let metadata = '';
@@ -315,7 +316,7 @@ class SerialDevice extends Device {
                     metadata = `${metadata}${data}`;
                     if (metadata.includes('END')) {
                         // hopefully we have the complete string, HW is the last line
-                        // this.parser = this.parseMeasurementData.bind(this);
+                        this.parser = this.parseMeasurementData.bind(this);
                         resolve(metadata);
                     }
                 };

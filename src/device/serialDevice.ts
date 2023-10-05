@@ -21,6 +21,8 @@ import {
     SampleValues,
     serialDeviceMessage,
 } from './types';
+import { bulkInsertDB } from '../features/dbConnection';
+import { options } from '../globals';
 
 /* eslint-disable no-bitwise */
 
@@ -305,6 +307,8 @@ class SerialDevice extends Device {
         for (; ofs <= buf.length - sampleSize; ofs += sampleSize) {
             this.handleRawDataSet(buf.readUIntLE(ofs, sampleSize));
         }
+        if (options.testArray.length > 0) bulkInsertDB(options.testArray);
+        options.testArray = [];
         this.remainder = buf.subarray(ofs);
     }
 

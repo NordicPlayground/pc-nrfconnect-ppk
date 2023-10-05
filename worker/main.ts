@@ -1,4 +1,3 @@
-/* eslint-disable no-bitwise */
 /*
  * Copyright (c) 2015 Nordic Semiconductor ASA
  *
@@ -54,8 +53,6 @@ const portOpenHandler = (msg: ProcessMessage) => {
     let data = Buffer.alloc(0);
     port.on('data', buf => {
         data = Buffer.concat([data, buf]);
-        console.log('###############################');
-        console.log(data);
     });
     setInterval(() => {
         if (data.length === 0) return;
@@ -64,7 +61,7 @@ const portOpenHandler = (msg: ProcessMessage) => {
                 if (err) console.log(err);
             });
         data = Buffer.alloc(0);
-    }, 30);
+    }, 1000);
 
     port.open(err => {
         if (err) {

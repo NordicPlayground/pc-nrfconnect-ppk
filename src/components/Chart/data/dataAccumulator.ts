@@ -6,11 +6,8 @@
 
 /* eslint no-plusplus: off */
 
-import {
-    numberOfDigitalChannels,
-    options,
-    timestampToIndex,
-} from '../../../globals';
+import { getDataFromDB } from '../../../features/dbConnection';
+import { numberOfDigitalChannels, timestampToIndex } from '../../../globals';
 import bitDataAccumulator, { BitDataAccumulator } from './bitDataAccumulator';
 import { createEmptyArrayWithAmpereState } from './commonBitDataFunctions';
 import { AmpereState, DigitalChannelStates } from './dataTypes';
@@ -51,7 +48,6 @@ export default (): DataAccumulator => ({
         len,
         windowDuration
     ) {
-        const { data } = options;
         const bitDataProcessor =
             digitalChannelsToCompute.length > 0
                 ? this.bitDataAccumulator
@@ -59,6 +55,8 @@ export default (): DataAccumulator => ({
 
         const originalIndexBegin = timestampToIndex(begin);
         const originalIndexEnd = timestampToIndex(end);
+
+        const data = getDataFromDB(originalIndexBegin, originalIndexEnd);
 
         const step =
             len === 0 ? 0 : (originalIndexEnd - originalIndexBegin) / len;
@@ -81,13 +79,13 @@ export default (): DataAccumulator => ({
 
             for (let n = k; n < l; ++n) {
                 const ni = (n + data.length) % data.length;
-                let v = data[ni];
+                let v = data[ni] ? data[ni].value : NaN;
 
                 if (removeZeroValues && v === 0) {
                     v = NaN;
                 }
 
-                if (!Number.isNaN(v)) {
+                if (!!max && !!min && !Number.isNaN(v)) {
                     if (v > max) max = v;
                     if (v < min) min = v;
 
@@ -95,7 +93,7 @@ export default (): DataAccumulator => ({
                 }
             }
 
-            if (min > max) {
+            if (!!max && !!min && min > max) {
                 min = undefined;
                 max = undefined;
             }

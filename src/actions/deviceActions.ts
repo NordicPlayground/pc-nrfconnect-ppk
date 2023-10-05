@@ -16,12 +16,7 @@ import {
 
 import SerialDevice from '../device/serialDevice';
 import { SampleValues } from '../device/types';
-import {
-    closeDB,
-    initializeDB,
-    insertDB,
-    prepareInsertStatement,
-} from '../features/dbConnection';
+import { bulkInsertDB, closeDB, initializeDB, insertDB } from '../features/dbConnection';
 import { minimapEvents } from '../features/minimap/minimapEvents';
 import { startPreventSleep, stopPreventSleep } from '../features/preventSleep';
 import {
@@ -85,8 +80,8 @@ export const setupOptions =
                 const newSamplesPerSecond = 1e6 / device.adcSamplingTimeUs;
 
                 setSamplingRate(newSamplesPerSecond);
-                initializeDataBuffer(realtimeWindowDuration);
-                initializeBitsBuffer(realtimeWindowDuration);
+                // initializeDataBuffer(realtimeWindowDuration);
+                // initializeBitsBuffer(realtimeWindowDuration);
             } else {
                 const { durationSeconds, sampleFreq } =
                     getState().app.dataLogger;
@@ -122,7 +117,6 @@ export function samplingStart() {
 
         // Initialize database connection
         initializeDB();
-        prepareInsertStatement();
 
         options.data.fill(NaN);
         if (options.bits) {
@@ -284,15 +278,21 @@ export function open(deviceInfo: any) {
                 }
                 nbSamples = 0;
             }
-            options.data[options.index] = zeroCappedValue;
-            logger.info(`Inserting database ${options.index}`);
-            insertDB(
-                options.index,
-                zeroCappedValue,
-                b16 | prevBits,
-                options.timestamp + options.samplingTime,
-                'raw'
-            );
+            // options.data[options.index] = zeroCappedValue;
+            // insertDB(
+            //     options.index,
+            //     zeroCappedValue,
+            //     b16 | prevBits,
+            //     options.timestamp + options.samplingTime,
+            //     'raw'
+            // );
+            options.testArray.push({
+                index: options.index,
+                value: zeroCappedValue,
+                bits: b16 | prevBits,
+                timestamp: options.timestamp + options.samplingTime,
+                type: 'raw',
+            });
             if (options.bits) {
                 options.bits[options.index] = b16 | prevBits;
                 prevBits = 0;

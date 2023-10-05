@@ -31,7 +31,6 @@ export interface GlobalOptions {
     /** Timestamp for the latest sample taken, incremented by {samplingTime} for each sample */
     timestamp: number;
     currentPane?: number;
-    testArray: any[];
 }
 
 export const options: GlobalOptions = {
@@ -41,7 +40,6 @@ export const options: GlobalOptions = {
     bits: null,
     index: 0,
     timestamp: 0,
-    testArray: [],
 };
 
 /**

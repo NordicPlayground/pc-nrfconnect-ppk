@@ -4,67 +4,89 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-4-Clause
  */
 
-import { getAppDataDir } from '@nordicsemiconductor/pc-nrfconnect-shared';
+import {
+    getAppDataDir,
+    logger,
+} from '@nordicsemiconductor/pc-nrfconnect-shared';
 import BetterSqlite3, { Database } from 'better-sqlite3';
 import path from 'path';
+import { v4 as uuid } from 'uuid';
 
-let db: Database;
+const BUFFER_ELEMENT_COUNT = 100352;
+let db: Database | null = null;
+const dataSessionBuffer = new Map<string, DataEntry[]>();
+
+const PREFIX = 'PPK_';
 
 type DataEntry = {
-    id: number;
+    timestamp: number;
     value: number;
     bits: number;
-    timestamp: number;
-    type: string;
 };
 
-export const connectDB = () => {
-    // const db = new Database('/tmp/ppk-test.db', { verbose: console.log });
-    db = new BetterSqlite3(path.join(getAppDataDir(), 'ppk-test.db'), {
-        verbose: console.log,
-    });
+export const OpenDB = () => {
+    if (db) {
+        return;
+    }
+
+    db = new BetterSqlite3(path.join(getAppDataDir(), `ppk.db`));
 
     // Though not required, it is generally important to set the WAL pragma for performance reasons.
     db.pragma('journal_mode = OFF');
     db.pragma('journal_size_limit = 6144000');
     // db.pragma('journal_mode = OFF');
     db.pragma('synchronous = OFF');
+
     // db.pragma('locking_mode = EXCLUSIVE');
-    console.count('Connect to database');
 };
 
-export const initializeDB = () => {
-    if (!db) connectDB();
-    db.prepare('DROP TABLE IF EXISTS ppk').run();
+export const CreateDBSessionTable = (): string => {
+    if (!db) {
+        OpenDB();
+        return CreateDBSessionTable();
+    }
+
+    const session = uuid().replaceAll('-', '');
+
+    logger.info(`Creating PPK DB for session ${session}`);
+    db.prepare(`DROP TABLE IF EXISTS ${PREFIX}${session}`).run();
     db.prepare(
-        'CREATE TABLE ppk (id INTEGER, value REAL, bits INTEGER, timestamp INTEGER, type TEXT)'
-        // 'CREATE TABLE ppk (id INTEGER, value BLOB, bits INTEGER, timestamp INTEGER, type TEXT)'
+        `CREATE TABLE ${PREFIX}${session} (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER, value REAL, bits INTEGER)`
     ).run();
+
+    return session;
 };
 
-export const insertDB = (
-    id: number,
-    value: number,
-    bits: number,
-    timestamp: number,
-    type: string
-) => {
-    if (!db) connectDB();
-    const stmt = db.prepare(
-        'insert into ppk (id, value, bits, timestamp, type) values (?, ?, ?, ?, ?)'
-    );
-    stmt.run(id, value, bits, timestamp, type);
+export const InsertToDBBuffer = (session: string, data: DataEntry) => {
+    const arrayBuffer = dataSessionBuffer.get(session) ?? [];
+    arrayBuffer.push(data);
+    dataSessionBuffer.set(session, arrayBuffer);
+
+    if (arrayBuffer.length === BUFFER_ELEMENT_COUNT) {
+        bulkInsertDB(session);
+    }
 };
 
-export const bulkInsertDB = array => {
-    // if (!db) connectDB();
-    connectDB();
+const bulkInsertDB = (session: string) => {
+    if (!db) {
+        OpenDB();
+        bulkInsertDB(session);
+        return;
+    }
+
+    const array = dataSessionBuffer.get(session) ?? [];
+
+    if (array.length === 0) {
+        return;
+    }
+
     const stmt = db.prepare(
-        'insert into ppk (id, value, bits, timestamp, type) values (?, ?, ?, ?, ?)'
+        `insert into ${PREFIX}${session} (timestamp, value, bits) values (?, ?, ?)`
     );
-    const insertMany = db.transaction(array => {
-        for (let a of array) {
-            stmt.run(a.index, a.value, a.bits, a.timestamp, a.type);
+    const insertMany = db.transaction(data => {
+        // eslint-disable-next-line no-restricted-syntax
+        for (const item of data) {
+            stmt.run(item.timestamp, item.value, item.bits);
         }
     });
     const t1 = performance.now();
@@ -74,20 +96,26 @@ export const bulkInsertDB = array => {
     const t2 = performance.now();
     console.count('Insert');
     console.log(t2 - t1, array.length);
-    closeDB();
+
+    dataSessionBuffer.delete(session);
 };
 
 export const getDataFromDB = (
+    session: string,
     beginIndex: number,
     endIndex: number
 ): DataEntry[] => {
-    if (!db) connectDB();
+    if (!db) {
+        OpenDB();
+        return getDataFromDB(session, beginIndex, endIndex);
+    }
     const stmt = db.prepare(
-        'SELECT id, value, bits, timestamp, type FROM ppk WHERE id BETWEEN ? and ?'
+        `SELECT id, value, bits, timestamp FROM ${PREFIX}${session}  WHERE id BETWEEN ? and ?`
     );
     return stmt.all(beginIndex, endIndex) as DataEntry[];
 };
 
 export const closeDB = () => {
-    db.close();
+    db?.close();
+    db = null;
 };

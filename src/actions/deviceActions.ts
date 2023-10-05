@@ -16,7 +16,10 @@ import {
 
 import SerialDevice from '../device/serialDevice';
 import { SampleValues } from '../device/types';
-import { bulkInsertDB, closeDB, initializeDB, insertDB } from '../features/dbConnection';
+import {
+    CreateDBSessionTable,
+    InsertToDBBuffer,
+} from '../features/dbConnection';
 import { minimapEvents } from '../features/minimap/minimapEvents';
 import { startPreventSleep, stopPreventSleep } from '../features/preventSleep';
 import {
@@ -65,6 +68,9 @@ import { calculateWindowSize, processTriggerSample } from './triggerActions';
 
 let device: null | SerialDevice = null;
 let updateRequestInterval: NodeJS.Timeout | undefined;
+let session: string | null = null;
+
+export const getDatabaseSession = () => session;
 
 const zeroCap = isDevelopment
     ? (n: number) => n
@@ -116,7 +122,7 @@ export function samplingStart() {
         dispatch(setupOptions());
 
         // Initialize database connection
-        initializeDB();
+        session = CreateDBSessionTable();
 
         options.data.fill(NaN);
         if (options.bits) {
@@ -278,21 +284,14 @@ export function open(deviceInfo: any) {
                 }
                 nbSamples = 0;
             }
-            // options.data[options.index] = zeroCappedValue;
-            // insertDB(
-            //     options.index,
-            //     zeroCappedValue,
-            //     b16 | prevBits,
-            //     options.timestamp + options.samplingTime,
-            //     'raw'
-            // );
-            options.testArray.push({
-                index: options.index,
+            options.data[options.index] = zeroCappedValue;
+
+            InsertToDBBuffer(session!, {
+                timestamp: options.timestamp + options.samplingTime,
                 value: zeroCappedValue,
                 bits: b16 | prevBits,
-                timestamp: options.timestamp + options.samplingTime,
-                type: 'raw',
             });
+
             if (options.bits) {
                 options.bits[options.index] = b16 | prevBits;
                 prevBits = 0;
@@ -302,7 +301,6 @@ export function open(deviceInfo: any) {
             if (options.index === options.data.length) {
                 if (samplingRunning) {
                     dispatch(samplingStop());
-                    closeDB();
                 }
             }
             if (triggerRunning || triggerSingleWaiting) {

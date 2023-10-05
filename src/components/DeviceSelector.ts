@@ -16,6 +16,7 @@ import {
 } from '@nordicsemiconductor/pc-nrfconnect-shared';
 
 import { close, open } from '../actions/deviceActions';
+import { closeDB } from '../features/dbConnection';
 import { setShowPPK1Dialog } from '../features/DeprecatedDevice/DeprecatedDeviceSlice';
 import { TDispatch } from '../slices/thunk';
 
@@ -61,6 +62,7 @@ const mapDispatch = (dispatch: TDispatch): Partial<DeviceSelectorProps> => ({
     onDeviceDeselected: () => {
         logger.info('Deselecting device');
         dispatch(close());
+        closeDB();
     },
     onDeviceIsReady: device => {
         logger.info(`Opening device with s/n ${device.serialNumber}`);

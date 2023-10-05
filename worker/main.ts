@@ -61,7 +61,7 @@ const portOpenHandler = (msg: ProcessMessage) => {
                 if (err) console.log(err);
             });
         data = Buffer.alloc(0);
-    }, 1000);
+    }, 30);
 
     port.open(err => {
         if (err) {

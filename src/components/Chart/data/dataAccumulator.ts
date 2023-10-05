@@ -6,6 +6,8 @@
 
 /* eslint no-plusplus: off */
 
+// import { getDataFromDB } from '../../../features/dbConnection';
+import { getDatabaseSession } from '../../../actions/deviceActions';
 import { getDataFromDB } from '../../../features/dbConnection';
 import { numberOfDigitalChannels, timestampToIndex } from '../../../globals';
 import bitDataAccumulator, { BitDataAccumulator } from './bitDataAccumulator';
@@ -56,8 +58,12 @@ export default (): DataAccumulator => ({
         const originalIndexBegin = timestampToIndex(begin);
         const originalIndexEnd = timestampToIndex(end);
 
-        // const data = getDataFromDB(originalIndexBegin, originalIndexEnd);
-        const data = [];
+        const data = getDataFromDB(
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            getDatabaseSession()!,
+            originalIndexBegin,
+            originalIndexEnd
+        );
 
         const step =
             len === 0 ? 0 : (originalIndexEnd - originalIndexBegin) / len;

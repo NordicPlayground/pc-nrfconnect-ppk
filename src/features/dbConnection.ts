@@ -4,7 +4,9 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-4-Clause
  */
 
+import { getAppDataDir } from '@nordicsemiconductor/pc-nrfconnect-shared';
 import BetterSqlite3, { Database } from 'better-sqlite3';
+import path from 'path';
 
 let db: Database;
 
@@ -18,7 +20,9 @@ type DataEntry = {
 
 export const connectDB = () => {
     // const db = new Database('/tmp/ppk-test.db', { verbose: console.log });
-    db = new BetterSqlite3('/tmp/ppk-test.db');
+    db = new BetterSqlite3(path.join(getAppDataDir(), 'ppk-test.db'), {
+        verbose: console.log,
+    });
 
     // Though not required, it is generally important to set the WAL pragma for performance reasons.
     db.pragma('journal_mode = OFF');

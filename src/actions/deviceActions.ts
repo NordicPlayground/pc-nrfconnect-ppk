@@ -271,6 +271,10 @@ export const open =
                     cappedValue >= getState().app.trigger.level;
                 prevCappedValue = cappedValue;
 
+                if (!DataManager().isInSync()) {
+                    return;
+                }
+
                 if (!getState().app.trigger.active && validTriggerValue) {
                     if (latestTrigger !== undefined) {
                         return;
@@ -496,11 +500,6 @@ export const processTrigger =
         onProgress?: (message: string, progress?: number) => void
     ): AppThunk<RootState, Promise<void>> =>
     async (dispatch, getState) => {
-        if (!DataManager().isInSync()) {
-            logger.debug('skipping trigger out of sync');
-            return;
-        }
-
         const trigger = DataManager().addTimeReachedTrigger(triggerLength);
 
         const triggerTime = Date.now();

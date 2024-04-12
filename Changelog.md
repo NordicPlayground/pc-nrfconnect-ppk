@@ -1,4 +1,4 @@
-## 4.0.1 - UNRELEASED
+## 4.1.0 - UNRELEASED
 
 ### Changed
 
@@ -11,6 +11,7 @@
 -   Clearing session files on close in some special cases.
 -   Behavior of **Disk full trigger** when recording for an indefinite period of
     time. It now correctly stops sampling when the disk is full.
+-   Allow start sampling in the scope mode when disk is full.
 
 ## 4.0.0 - 2024-03-13
 

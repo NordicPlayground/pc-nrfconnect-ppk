@@ -180,7 +180,14 @@ export const DataManager = () => ({
             (options.writeBuffer?.getFirstWriteTime() ??
                 options.fileBuffer?.getFirstWriteTime() ??
                 0);
-        const simulationDelta = getTimestamp() / 1000;
+
+        const processedBytes =
+            options.writeBuffer?.getBytesWritten() ??
+            options.fileBuffer?.getSessionInBytes() ??
+            0;
+
+        const simulationDelta =
+            indexToTimestamp(processedBytes / frameSize - 1) / 1000;
         if (simulationDelta > actualTimePassed) return true;
 
         const pcAheadDelta = actualTimePassed - simulationDelta;

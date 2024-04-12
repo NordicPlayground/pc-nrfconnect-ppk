@@ -13,6 +13,7 @@ import {
     StartStopButton,
     telemetry,
 } from '@nordicsemiconductor/pc-nrfconnect-shared';
+import fs from 'fs';
 import { unit } from 'mathjs';
 
 import { samplingStart, samplingStop } from '../../actions/deviceActions';
@@ -93,6 +94,14 @@ export default () => {
         });
 
         if (mode === 'DataLogger') {
+            if (!fs.existsSync(sessionFolder)) {
+                logger.error(
+                    `Temp Disk root folder '${sessionFolder}' does not exists. Change the root directory in the Temp Disk settings on the side panel.`
+                );
+                setShowDialog(false);
+                return;
+            }
+
             const space = Math.max(
                 0,
                 await getFreeSpace(diskFullTrigger, sessionFolder)

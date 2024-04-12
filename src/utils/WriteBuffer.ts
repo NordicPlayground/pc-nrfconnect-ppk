@@ -212,8 +212,8 @@ export class WriteBuffer {
         return this.#pages;
     }
 
-    #calculateWriteIdealBufferRange(bytesToRight: number): Range {
-        const bytesWritten = this.getBytesWritten() + bytesToRight;
+    #calculateWriteIdealBufferRange(bytesToWrite: number): Range {
+        const bytesWritten = this.getBytesWritten() + bytesToWrite;
         const normalizedEnd =
             Math.ceil(bytesWritten / this.#bufferPageSize) *
                 this.#bufferPageSize -

@@ -84,8 +84,8 @@ export default () => {
         <>
             <NumberInput
                 range={{
-                    min: 1,
-                    max: 1000,
+                    min: 100,
+                    max: 10000,
                     decimals: 2,
                     step: 0.01,
                 }}

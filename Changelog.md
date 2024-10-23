@@ -1,3 +1,10 @@
+## 4.3.0 - Unreleased
+
+### Changed
+
+-   Changed the minimum and maximum range duration of trigger window. The
+    duration can now be between 100ms and 10s.
+
 ## 4.2.0 - 2024-07-17
 
 ### Changed

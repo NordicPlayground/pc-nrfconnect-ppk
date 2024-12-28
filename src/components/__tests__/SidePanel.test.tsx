@@ -33,6 +33,7 @@ jest.mock('../../utils/persistentStore', () => ({
     getRecordingLength: () => 1000,
     getAutoExport: () => false,
     getTriggerType: () => 'Single',
+    getTriggerEdge: () => 'Raising Edge',
     getPreferredSessionLocation: () => '/tmp',
     getDiskFullTrigger: () => 4096,
 }));

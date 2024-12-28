@@ -226,11 +226,12 @@ export const open =
         let nbSamplesTotal = 0;
 
         const onSample = ({ value, bits }: SampleValues) => {
+            const state = getState();
             const {
                 app: { samplingRunning },
                 dataLogger: { maxSampleFreq },
-            } = getState().app;
-            const sampleFreq = getSampleFrequency(getState());
+            } = state.app;
+            const sampleFreq = getSampleFrequency(state);
             if (!samplingRunning) {
                 return;
             }
@@ -264,30 +265,39 @@ export const open =
             DataManager().addData(cappedValue, b16 | prevBits);
             prevBits = 0;
 
-            if (getRecordingMode(getState()) === 'Scope') {
+            if (getRecordingMode(state) === 'Scope') {
+                const isRaisingEdge = state.app.trigger.edge === 'Raising Edge';
+                const isLoweringEdge =
+                    state.app.trigger.edge === 'Lowering Edge';
+
                 const validTriggerValue =
                     prevCappedValue != null &&
-                    prevCappedValue < getState().app.trigger.level &&
-                    cappedValue >= getState().app.trigger.level;
+                    ((isRaisingEdge &&
+                        prevCappedValue < state.app.trigger.level &&
+                        cappedValue >= state.app.trigger.level) ||
+                        (isLoweringEdge &&
+                            prevCappedValue > state.app.trigger.level &&
+                            cappedValue <= state.app.trigger.level));
+
                 prevCappedValue = cappedValue;
 
                 if (!DataManager().isInSync()) {
                     return;
                 }
 
-                if (!getState().app.trigger.active && validTriggerValue) {
+                if (!state.app.trigger.active && validTriggerValue) {
                     if (latestTrigger !== undefined) {
                         return;
                     }
 
-                    if (!isSavePending(getState())) {
+                    if (!isSavePending(state)) {
                         dispatch(setSavePending(true));
                     }
                     dispatch(setTriggerActive(true));
                     dispatch(
                         processTrigger(
                             cappedValue,
-                            getTriggerRecordingLength(getState()) * 1000, // ms to uS
+                            getTriggerRecordingLength(state) * 1000, // ms to uS
                             (progressMessage, prog) => {
                                 dispatch(
                                     setProgress({
@@ -306,26 +316,26 @@ export const open =
                         }
                         if (
                             samplingRunning &&
-                            getState().app.trigger.type === 'Single'
+                            state.app.trigger.type === 'Single'
                         ) {
                             dispatch(samplingStop());
                         }
                     });
                 } else if (
-                    getState().app.trigger.active &&
+                    state.app.trigger.active &&
                     !validTriggerValue &&
-                    getState().app.trigger.type === 'Continuous'
+                    state.app.trigger.type === 'Continuous'
                 ) {
                     dispatch(setTriggerActive(false));
                 }
-            } else if (!isSavePending(getState())) {
+            } else if (!isSavePending(state)) {
                 dispatch(setSavePending(true));
             }
 
             const durationInMicroSeconds =
                 convertTimeToSeconds(
-                    getState().app.dataLogger.duration,
-                    getState().app.dataLogger.durationUnit
+                    state.app.dataLogger.duration,
+                    state.app.dataLogger.durationUnit
                 ) * microSecondsPerSecond;
             if (durationInMicroSeconds <= DataManager().getTimestamp()) {
                 if (samplingRunning) {

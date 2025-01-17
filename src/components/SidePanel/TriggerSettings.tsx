@@ -15,12 +15,15 @@ import {
 import { appState } from '../../slices/appSlice';
 import { getRecordingMode } from '../../slices/chartSlice';
 import {
+    getTriggerEdge,
     getTriggerRecordingLength,
     getTriggerType,
     getTriggerValue,
+    setTriggerEdge,
     setTriggerLevel,
     setTriggerRecordingLength,
     setTriggerType,
+    TriggerEdgeValues,
     TriggerTypeValues,
 } from '../../slices/triggerSlice';
 
@@ -50,6 +53,7 @@ export default () => {
     const recordingLength = useSelector(getTriggerRecordingLength);
     const triggerValue = useSelector(getTriggerValue);
     const triggerType = useSelector(getTriggerType);
+    const triggerEdge = useSelector(getTriggerEdge);
     const { samplingRunning } = useSelector(appState);
     const dataLoggerActive =
         useSelector(getRecordingMode) === 'DataLogger' && samplingRunning;
@@ -137,6 +141,14 @@ export default () => {
                 items={[...TriggerTypeValues]}
                 onSelect={m => dispatch(setTriggerType(TriggerTypeValues[m]))}
                 selectedItem={triggerType}
+                disabled={samplingRunning}
+            />
+            <StateSelector
+                items={[...TriggerEdgeValues]}
+                onSelect={m => {
+                    dispatch(setTriggerEdge(TriggerEdgeValues[m]));
+                }}
+                selectedItem={triggerEdge}
                 disabled={samplingRunning}
             />
         </>

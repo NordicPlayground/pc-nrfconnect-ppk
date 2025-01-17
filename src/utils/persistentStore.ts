@@ -9,7 +9,7 @@ import {
     getPersistentStore,
 } from '@nordicsemiconductor/pc-nrfconnect-shared';
 
-import { type TriggerType } from '../slices/triggerSlice';
+import { type TriggerEdge, type TriggerType } from '../slices/triggerSlice';
 
 const LAST_SAVE_DIR = 'lastSaveDir';
 const SPIKE_FILTER_SAMPLES = 'spikeFilter.samples';
@@ -140,6 +140,11 @@ export const getTriggerType = (defaultValue: TriggerType) =>
     store.get(`trigger-mode-type`, defaultValue);
 export const setTriggerType = (value: TriggerType) => {
     store.set(`trigger-mode-type`, value);
+};
+export const getTriggerEdge = (defaultValue: TriggerEdge) =>
+    store.get(`trigger-edge`, defaultValue);
+export const setTriggerEdge = (value: TriggerEdge) => {
+    store.set(`trigger-edge`, value);
 };
 
 export const getDurationUnit = (
